@@ -1,15 +1,12 @@
-package edu.wzm.sample;
+package edu.wzm.planner;
 
-
-import org.apache.calcite.adapter.enumerable.EnumerableConvention;
-import org.apache.calcite.adapter.enumerable.EnumerableRules;
 import org.apache.calcite.config.CalciteConnectionConfigImpl;
 import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.plan.ConventionTraitDef;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptUtil;
-import org.apache.calcite.plan.RelTraitSet;
-import org.apache.calcite.plan.volcano.VolcanoPlanner;
+import org.apache.calcite.plan.hep.HepPlanner;
+import org.apache.calcite.plan.hep.HepProgramBuilder;
 import org.apache.calcite.prepare.CalciteCatalogReader;
 import org.apache.calcite.rel.RelDistributionTraitDef;
 import org.apache.calcite.rel.RelNode;
@@ -37,63 +34,49 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Properties;
 
-public class VolcanoTest {
-    private static final Logger LOGGER = LogManager.getLogger(VolcanoTest.class);
 
-    private static VolcanoPlanner getVolcanoPlanner(){
-        VolcanoPlanner planner = new VolcanoPlanner();
+public class HepPlannerTest {
+    private static final Logger LOGGER = LogManager.getLogger(HepPlannerTest.class);;
 
-        /** add TraitDef */
-        planner.addRelTraitDef(ConventionTraitDef.INSTANCE);
-        planner.addRelTraitDef(RelDistributionTraitDef.INSTANCE);
+    public static HepPlanner getHepPlanner(){
+        HepProgramBuilder builder = new HepProgramBuilder();
+        builder.addRuleInstance(FilterJoinRule.FilterIntoJoinRule.FILTER_ON_JOIN);
+        builder.addRuleInstance(ReduceExpressionsRule.PROJECT_INSTANCE);
+        builder.addRuleInstance(PruneEmptyRules.PROJECT_INSTANCE);
 
-        /** add rule */
-        planner.addRule(FilterJoinRule.FilterIntoJoinRule.FILTER_ON_JOIN);
-        planner.addRule(ReduceExpressionsRule.PROJECT_INSTANCE);
-        planner.addRule(PruneEmptyRules.PROJECT_INSTANCE);
-
-        /** add ConverterRule */
-        planner.addRule(EnumerableRules.ENUMERABLE_MERGE_JOIN_RULE);
-        planner.addRule(EnumerableRules.ENUMERABLE_SORT_RULE);
-        planner.addRule(EnumerableRules.ENUMERABLE_VALUES_RULE);
-        planner.addRule(EnumerableRules.ENUMERABLE_PROJECT_RULE);
-        planner.addRule(EnumerableRules.ENUMERABLE_FILTER_RULE);
-
-        return planner;
+        return new HepPlanner(builder.build());
     }
 
-    public static void main(String... args)throws Exception{
-//        String sql = "select u.id as user_id, u.name as user_name, j.company as user_company, u.age as user_age \n" +
-//                "from users u join jobs j on u.name=j.name\n" +
-//                "where u.age > 30 and j.id>10\n" +
-//                "order by user_id";
-        String sql = "select u.id as user_id, u.name as user_name, j.company as user_company, u.age as user_age \n"
-                + "from users u join jobs j on u.id = j.id \n"
-                + "where u.age > 30 and j.id > 10 \n"
-                + "order by user_id";
+    public static void main(String... args) throws Exception{
+        String sql = "select u.id as user_id, u.name as user_name, j.company as user_company, u.age as user_age \n" +
+                "from users u join jobs j on u.name=j.name\n" +
+                "where u.age > 30 and j.id>10\n" +
+                "order by user_id";
 
         SchemaPlus rootSchema = CalciteUtil.getSchemaPlus();
+
         final FrameworkConfig frameworkConfig = Frameworks.newConfigBuilder()
-                .parserConfig(SqlParser.Config.DEFAULT)
                 .defaultSchema(rootSchema)
+                .parserConfig(SqlParser.Config.DEFAULT)
                 .traitDefs(ConventionTraitDef.INSTANCE, RelDistributionTraitDef.INSTANCE)
                 .build();
 
-        VolcanoPlanner planner = getVolcanoPlanner();
+        /** use HepPlanner */
+        HepPlanner planner = getHepPlanner();
 
         SqlTypeFactoryImpl factory = new SqlTypeFactoryImpl(RelDataTypeSystem.DEFAULT);
+
         /** SQL parser */
         SqlParser parser = SqlParser.create(sql, SqlParser.Config.DEFAULT);
         SqlNode parsedSqlNode = parser.parseStmt();
         LOGGER.info("The SqlNode after parsed: \n{}\n", parsedSqlNode.toString());
 
-        CalciteCatalogReader catalogReader = new CalciteCatalogReader(
-                CalciteSchema.from(rootSchema),
+        CalciteCatalogReader catalogReader = new CalciteCatalogReader(CalciteSchema.from(rootSchema),
                 CalciteSchema.from(rootSchema).path(null),
                 factory,
                 new CalciteConnectionConfigImpl(new Properties()));
 
-        /** Sql validate */
+        /** SQL validate */
         SqlValidator validator = SqlValidatorUtil.newValidator(SqlStdOperatorTable.instance(),
                 catalogReader,
                 factory,
@@ -126,11 +109,6 @@ public class VolcanoTest {
         RelNode relNode = root.rel;
         LOGGER.info("The Relational Expression string before optimized: \n{}\n",
                 RelOptUtil.toString(relNode, SqlExplainLevel.ALL_ATTRIBUTES));
-
-        RelTraitSet desiredTraits = relNode.getCluster()
-                .traitSet()
-                .replace(EnumerableConvention.INSTANCE);
-        relNode = planner.changeTraits(relNode, desiredTraits);
 
         planner.setRoot(relNode);
         relNode = planner.findBestExp();

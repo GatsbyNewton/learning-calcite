@@ -1,4 +1,4 @@
-package edu.wzm.sample;
+package edu.wzm.planner;
 
 import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.plan.Context;
