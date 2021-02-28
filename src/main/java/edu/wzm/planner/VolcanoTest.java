@@ -97,7 +97,7 @@ public class VolcanoTest {
         SqlValidator validator = SqlValidatorUtil.newValidator(SqlStdOperatorTable.instance(),
                 catalogReader,
                 factory,
-                CalciteUtil.conformance(frameworkConfig));
+                (SqlValidator.Config) CalciteUtil.conformance(frameworkConfig));
         SqlNode validatedSqlNode = validator.validate(parsedSqlNode);
         LOGGER.info("The SqlNode after validated: \n{}\n", validatedSqlNode.toString());
 
@@ -108,7 +108,7 @@ public class VolcanoTest {
         final SqlToRelConverter.Config config = SqlToRelConverter.configBuilder()
                 .withConfig(frameworkConfig.getSqlToRelConverterConfig())
                 .withTrimUnusedFields(false)
-                .withConvertTableAccess(false)
+//                .withConvertTableAccess(false)
                 .build();
 
         /** SqlNode to RelNode */

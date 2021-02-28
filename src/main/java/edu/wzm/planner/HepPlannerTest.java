@@ -11,14 +11,19 @@ import org.apache.calcite.prepare.CalciteCatalogReader;
 import org.apache.calcite.rel.RelDistributionTraitDef;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.RelRoot;
+import org.apache.calcite.rel.rel2sql.RelToSqlConverter;
 import org.apache.calcite.rel.rules.FilterJoinRule;
 import org.apache.calcite.rel.rules.PruneEmptyRules;
 import org.apache.calcite.rel.rules.ReduceExpressionsRule;
 import org.apache.calcite.rel.type.RelDataTypeSystem;
 import org.apache.calcite.rex.RexBuilder;
+import org.apache.calcite.rex.RexSqlStandardConvertletTable;
+import org.apache.calcite.rex.RexToSqlNodeConverter;
+import org.apache.calcite.rex.RexToSqlNodeConverterImpl;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.sql.SqlExplainLevel;
 import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.dialect.AnsiSqlDialect;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.type.SqlTypeFactoryImpl;
@@ -80,7 +85,7 @@ public class HepPlannerTest {
         SqlValidator validator = SqlValidatorUtil.newValidator(SqlStdOperatorTable.instance(),
                 catalogReader,
                 factory,
-                CalciteUtil.conformance(frameworkConfig));
+                (SqlValidator.Config) CalciteUtil.conformance(frameworkConfig));
         SqlNode validatedSqlNode = validator.validate(parsedSqlNode);
         LOGGER.info("The SqlNode after validated: \n{}\n", validatedSqlNode.toString());
 
@@ -91,7 +96,7 @@ public class HepPlannerTest {
         final SqlToRelConverter.Config config = SqlToRelConverter.configBuilder()
                 .withConfig(frameworkConfig.getSqlToRelConverterConfig())
                 .withTrimUnusedFields(false)
-                .withConvertTableAccess(false)
+//                .withConvertTableAccess(false)
                 .build();
 
         /** SqlNode to RelNode */
@@ -114,5 +119,9 @@ public class HepPlannerTest {
         relNode = planner.findBestExp();
         LOGGER.info("The BEST Relational Expression string: \n{}\n",
                 RelOptUtil.toString(relNode, SqlExplainLevel.ALL_ATTRIBUTES));
+
+
+        RelToSqlConverter relToSqlConverter = new RelToSqlConverter(AnsiSqlDialect.DEFAULT);
+        System.out.println("Select: \n" + relToSqlConverter.visitRoot(relNode).asSelect());
     }
 }
