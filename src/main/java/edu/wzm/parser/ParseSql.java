@@ -44,7 +44,7 @@ public class ParseSql {
             System.out.println("\nIdentifier: " + identifier.getSimple());
 
             node.getOperandList()
-                    .forEach(x -> System.out.println("{}" + x));
+                    .forEach(x -> System.out.println("nodeList: " + x));
         }
     }
 }
