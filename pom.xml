@@ -14,7 +14,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <calcite-version>1.24.0</calcite-version>
+    <calcite-version>1.26.0</calcite-version>
     <log4j2.version>2.13.3</log4j2.version>
     <lombok.version>1.18.8</lombok.version>
   </properties>
